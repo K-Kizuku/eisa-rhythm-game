@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"image/color"
 	_ "image/png"
 	"io"
 	"log"
+	"math/rand"
 	"time"
 
 	raudio "github.com/K-Kizuku/eisa-rhythm-game/resources/audio"
@@ -15,7 +15,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
@@ -30,6 +29,159 @@ const (
 var (
 	playerBarColor     = color.RGBA{0x80, 0x80, 0x80, 0xff}
 	playerCurrentColor = color.RGBA{0xff, 0xff, 0xff, 0xff}
+	tapPoints          = []float64{
+		3.88,
+		7.76,
+		11.64,
+		15.52,
+		19.4,
+		23.28,
+		27.17,
+		31.05,
+		34.93,
+		38.81,
+		42.69,
+		46.57,
+		50.45,
+		54.33,
+		58.21,
+		62.09,
+		65.97,
+		69.85,
+		73.74,
+		77.62,
+		81.5,
+		85.38,
+		89.26,
+		93.14,
+		97.02,
+		100.9,
+		104.78,
+		108.66,
+		112.54,
+		116.42,
+		120.3,
+		124.19,
+		128.07,
+		131.95,
+		135.83,
+		139.71,
+		143.59,
+		147.47,
+		151.35,
+		155.23,
+		159.11,
+		162.99,
+		166.87,
+		170.76,
+		174.64,
+		178.52,
+		182.4,
+		186.28,
+		190.16,
+	}
+	tapEisaPoints = []float64{
+		0.0,
+		1.06,
+		2.12,
+		3.18,
+		4.24,
+		5.3,
+		6.36,
+		7.42,
+		8.48,
+		9.54,
+		10.6,
+		11.66,
+		12.72,
+		13.78,
+		14.84,
+		15.9,
+		16.96,
+		18.02,
+		19.08,
+		20.14,
+		21.2,
+		22.26,
+		23.32,
+		24.38,
+		25.44,
+		26.5,
+		27.56,
+		28.62,
+		29.68,
+		30.74,
+		31.8,
+		32.86,
+		33.92,
+		34.98,
+		36.04,
+		37.1,
+		38.16,
+		39.22,
+		40.28,
+		41.34,
+		42.4,
+		43.46,
+		44.52,
+		45.58,
+		46.64,
+		47.7,
+		48.76,
+		49.82,
+		50.88,
+		51.94,
+		53.0,
+		54.06,
+		55.12,
+		56.18,
+		57.24,
+		58.3,
+		59.36,
+		60.42,
+		61.48,
+		62.54,
+		63.6,
+		64.66,
+		65.72,
+		66.78,
+		67.84,
+		68.9,
+		69.96,
+		71.02,
+		72.08,
+		73.14,
+		74.2,
+		75.26,
+		76.32,
+		77.38,
+		78.44,
+		79.5,
+		80.56,
+		81.62,
+		82.68,
+		83.74,
+		84.8,
+		85.86,
+		86.92,
+		87.98,
+		89.04,
+		90.1,
+		91.16,
+		92.22,
+		93.28,
+		94.34,
+		95.4,
+		96.46,
+		97.52,
+		98.58,
+		99.64,
+		100.7,
+		101.76,
+		102.82,
+		103.88,
+		104.94,
+	}
 )
 
 var (
@@ -37,6 +189,7 @@ var (
 	chinsukouImage    *ebiten.Image
 	alertButtonImage  *ebiten.Image
 	backGround        *ebiten.Image
+	currentTime       time.Duration
 )
 
 func init() {
@@ -201,6 +354,7 @@ func (p *Player) update() error {
 		b := ebiten.IsRunnableOnUnfocused()
 		ebiten.SetRunnableOnUnfocused(!b)
 	}
+	currentTime = p.current
 	return nil
 }
 
@@ -328,41 +482,41 @@ func (p *Player) draw(screen *ebiten.Image) {
 	vector.DrawFilledRect(screen, float32(x), float32(y), float32(w), float32(h), playerBarColor, true)
 
 	// Draw the cursor on the bar.
-	c := p.current
+	// c := p.current
 	cx := float32(x) + float32(w)*float32(p.current)/float32(p.total)
 	cy := float32(y) + float32(h)/2
 	vector.DrawFilledCircle(screen, cx, cy, 12, playerCurrentColor, true)
 
 	// Compose the current time text.
-	m := (c / time.Minute) % 100
-	s := (c / time.Second) % 60
-	ms := (c / time.Millisecond) % 1000
-	currentTimeStr := fmt.Sprintf("%02d:%02d.%03d", m, s, ms)
+	// m := (c / time.Minute) % 100
+	// s := (c / time.Second) % 60
+	// ms := (c / time.Millisecond) % 1000
+	// currentTimeStr := fmt.Sprintf("%02d:%02d.%03d", m, s, ms)
 
 	// Draw buttons
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(p.playButtonPosition.X), float64(p.playButtonPosition.Y))
 	if p.audioPlayer.IsPlaying() {
-		screen.DrawImage(chinsukouImage, op)
+		// screen.DrawImage(chinsukouImage, op)
 	} else {
-		screen.DrawImage(yanbarukuinaImage, op)
+		// screen.DrawImage(yanbarukuinaImage, op)
 	}
 	op.GeoM.Reset()
 	op.GeoM.Translate(float64(p.alertButtonPosition.X), float64(p.alertButtonPosition.Y))
-	screen.DrawImage(alertButtonImage, op)
+	// screen.DrawImage(alertButtonImage, op)
 
 	// Draw the debug message.
-	msg := fmt.Sprintf(`TPS: %0.2f
-Press S to toggle Play/Pause
-Press P to play SE
-Press Z or X to change volume of the music
-Press U to switch the runnable-on-unfocused state
-Press A to switch Ogg and MP3 (Current: %s)
-Current Time: %s
-Current Volume: %d/128
-Type: %s`, ebiten.ActualTPS(), p.musicType,
-		currentTimeStr, int(p.audioPlayer.Volume()*128), p.musicType)
-	ebitenutil.DebugPrint(screen, msg)
+	// 	msg := fmt.Sprintf(`TPS: %0.2f
+	// Press S to toggle Play/Pause
+	// Press P to play SE
+	// Press Z or X to change volume of the music
+	// Press U to switch the runnable-on-unfocused state
+	// Press A to switch Ogg and MP3 (Current: %s)
+	// Current Time: %s
+	// Current Volume: %d/128
+	// Type: %s`, ebiten.ActualTPS(), p.musicType,
+	// 		currentTimeStr, int(p.audioPlayer.Volume()*128), p.musicType)
+	// ebitenutil.DebugPrint(screen, msg)
 }
 
 type Game struct {
@@ -435,13 +589,37 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func (g *Game) Draw(screen *ebiten.Image) {
+// 0~4のランダムな整数を返す関数
+func randam() int {
+	return rand.Intn(5)
+}
 
+func numPos(n int) int {
+	return (n*107/(51+n) + n) % 5
+}
+
+func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(backGround, nil)
-	// op := &ebiten.DrawImageOptions{}
+	op := &ebiten.DrawImageOptions{}
+	for i, v := range tapEisaPoints {
+		op.GeoM.Reset()
+		op.GeoM.Translate(float64(375+numPos(i)*50), float64(-v*300+float64((currentTime/time.Millisecond))))
+		screen.DrawImage(chinsukouImage, op)
+		// if i%2 == 0 {
+		// 	op.GeoM.Reset()
+		// 	op.GeoM.Translate(v, 0)
+		// 	screen.DrawImage(yanbarukuinaImage, op)
+		// }
+	}
 
 	if g.musicPlayer != nil {
 		g.musicPlayer.draw(screen)
+	}
+	for n := range 5 {
+		op.GeoM.Reset()
+		op.GeoM.Translate(float64(375+numPos(n)*50), 700)
+		// screen.DrawImage(ebitenutil.DrawRect(), op)
+		vector.DrawFilledCircle(screen, float32(400+n*50), 700, 25, color.RGBA{0xff, 0xff, 0xff, 0xff}, false)
 	}
 }
 
